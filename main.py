@@ -61,7 +61,7 @@ async def run_hunt(request: HuntRequest):
         print(f"\n🚀 [User: {request.user_id}] Hunting for: {request.keywords}")
         
         # --- STEP 1A: Credit Check ---
-        profile_res = supabase.table("profiles").select("api_credits").eq("id", request.user_id).execute()
+        profile_res = supabase.table("users").select("api_credits").eq("id", request.user_id).execute()
         
         if not profile_res.data:
             raise ValueError("User profile not found in database. Are you authenticated?")
@@ -121,7 +121,7 @@ async def run_hunt(request: HuntRequest):
 
         # --- STEP 5: Deduct the Credit ---
         new_credits = current_credits - 1
-        supabase.table("profiles").update({"api_credits": new_credits}).eq("id", request.user_id).execute()
+        supabase.table("users").update({"api_credits": new_credits}).eq("id", request.user_id).execute()
 
         print(f"✅ Campaign saved! {new_credits} credits remaining.")
 

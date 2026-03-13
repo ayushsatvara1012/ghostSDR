@@ -1,26 +1,113 @@
 @import "tailwindcss";
 
+/* ============================================================
+   GHOST SDR — "PHANTOM PRECISION" THEME
+   Philosophy: Aggressive Authority + Controlled Calm
+   
+   Research basis:
+   — Deep navy-black (0B0D17) = authority, military-grade precision
+   — Icy cool surfaces = clinical sharpness, zero emotional warmth
+   — Teal accent (0D9488) = controlled intelligence, "targeting" energy
+     Used by: Palantir, Linear, Anduril. Aggressive but never alarming.
+   — Cool blue-gray typography = razor-sharp clarity, no noise
+   ============================================================ */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Backgrounds — icy cool off-white, not warm cream */
+  --background: #F2F4F9;
+  --surface:    #E8EBF4;
+  --sidebar-bg: #EAECf6;
+
+  /* Typography */
+  --foreground: #181B2E;  /* Deep navy-black text */
+  --muted:      #6B7399;  /* Cool blue-gray muted */
+
+  /* Structure */
+  --border: #CDD1E8;      /* Cool blue-tinted border */
+
+  /* Accent — Electric Teal: controlled aggression */
+  --accent:       #0D9488;  /* Teal 600 */
+  --accent-hover: #0F766E;  /* Teal 700 */
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-inter), system-ui, sans-serif;
+  --font-serif: var(--font-lora), Georgia, 'Times New Roman', serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* ============================================================
+   DARK MODE — "Deep Space" variant
+   The darkness feels intentional, like a cockpit at night.
+   ============================================================ */
+.dark {
+  --background: #0B0D17;   /* Near-black navy — deep space */
+  --surface:    #10131F;   /* Slightly lifted surface */
+  --sidebar-bg: #080A12;   /* Even deeper sidebar — more dramatic */
+
+  --foreground: #E2E5F5;   /* Cold off-white — not warm */
+  --muted:      #4A5280;   /* Muted navy-blue */
+
+  --border: #1C2140;       /* Deep navy border */
+
+  --accent:       #14B8A6; /* Teal 400 — slightly brighter in dark mode */
+  --accent-hover: #0D9488; /* Teal 600 */
+}
+
+/* ============================================================
+   BASE RESETS
+   ============================================================ */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-inter), 'Inter', system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+/* Editorial serif headings utility */
+.font-editorial {
+  font-family: var(--font-lora), Georgia, 'Times New Roman', serif;
+}
+
+/* ============================================================
+   REFINED SCROLLBAR
+   ============================================================ */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 99px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--muted);
+}
+
+/* ============================================================
+   FOCUS RING — Teal precision ring
+   ============================================================ */
+*:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Input font override */
+input, textarea, select {
+  font-family: var(--font-inter), 'Inter', system-ui, sans-serif;
 }

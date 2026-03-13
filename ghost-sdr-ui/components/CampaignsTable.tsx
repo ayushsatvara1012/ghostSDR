@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 
-// Data Contracts
 interface Insight {
   trigger_type: string;
   evidence: string;
@@ -34,146 +33,174 @@ export function CampaignsTable({ initialCampaigns }: { initialCampaigns: Campaig
     initialCampaigns.length > 0 ? initialCampaigns[0].id : null
   );
 
-  const toggleCampaign = (id: string) => {
+  const toggleCampaign = (id: string) =>
     setExpandedCampaignId(expandedCampaignId === id ? null : id);
-  };
 
   const exportToCsv = (campaign: Campaign) => {
-    if (!campaign.leads || campaign.leads.length === 0) return;
-
-    // Build the CSV Header
-    const headers = ['Name', 'LinkedIn URL', 'Headline', 'Relevance Score', 'Suggested Opening Line'];
-    
-    // Build the Rows
+    if (!campaign.leads?.length) return;
+    const headers = ['Name', 'LinkedIn URL', 'Headline', 'Relevance Score', 'AI Opening Line'];
     const rows = campaign.leads.map(lead => [
       `"${lead.full_name.replace(/"/g, '""')}"`,
-      `"${lead.linkedin_url}"`,
+      `"${lead.linkedin_url || ''}"`,
       `"${(lead.headline || '').replace(/"/g, '""')}"`,
       lead.relevance_score,
-      `"${lead.suggested_opening_line.replace(/"/g, '""')}"`
+      `"${(lead.suggested_opening_line || '').replace(/"/g, '""')}"`,
     ]);
-
-    // Combine Header and Rows
-    const csvContent = [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
-
-    // Create Download Blob
+    const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
-    
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', `Ghost_SDR_Leads_${campaign.search_query.replace(/\s+/g, '_')}.csv`);
+    link.setAttribute('download', `GhostSDR_${campaign.search_query.replace(/\s+/g, '_')}.csv`);
     document.body.appendChild(link);
     link.click();
-    
-    // Cleanup
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
   };
 
   if (campaigns.length === 0) {
     return (
-      <div className="text-center py-16 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm mt-6">
-        <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-        </svg>
-        <h3 className="mt-4 text-sm font-medium text-gray-900 dark:text-white">No campaigns found</h3>
-        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Head over to the home page to run your first hunt.</p>
+      <div className="text-center py-20 rounded-2xl border-[var(--border)] bg-[var(--surface)] border">
+        <p className="font-editorial text-lg mb-2 text-[var(--foreground)]">No campaigns yet</p>
+        <p className="text-sm text-[var(--muted)]">
+          Run your first hunt from the{' '}
+          <a href="/" className="text-[var(--accent)] font-semibold">home page</a>.
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="mt-8 space-y-6">
+    <div className="space-y-4">
       {campaigns.map((campaign) => (
-        <div key={campaign.id} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden shadow-sm transition-all hover:shadow-md">
-          {/* Campaign Header Row */}
-          <div 
-            className="px-6 py-5 flex items-center justify-between cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+        <div
+          key={campaign.id}
+          className="rounded-2xl overflow-hidden transition-all border-[var(--border)] bg-[var(--background)] border"
+        >
+          {/* Campaign header row */}
+          <div
+            className="px-4 md:px-6 py-4 flex items-center justify-between cursor-pointer transition-colors hover:bg-[var(--surface)]"
+            style={{ borderBottom: expandedCampaignId === campaign.id ? '1px solid var(--border)' : 'none' }}
             onClick={() => toggleCampaign(campaign.id)}
           >
-            <div className="flex items-center space-x-4">
-              <button className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
-                <svg className={`h-5 w-5 transform transition-transform duration-200 ${expandedCampaignId === campaign.id ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-                </svg>
-              </button>
-              <div>
-                <h3 className="text-lg font-bold text-gray-900 dark:text-white">"{campaign.search_query}"</h3>
-                <div className="flex items-center space-x-3 mt-1">
-                  <span className="text-sm text-gray-500 dark:text-gray-400">
-                    {new Date(campaign.created_at).toLocaleDateString()}
-                  </span>
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
-                    {campaign.leads?.length || 0} Leads
-                  </span>
-                </div>
+            <div className="flex items-center gap-3 md:gap-4 flex-1 min-w-0">
+              <svg
+                className={`h-4 w-4 shrink-0 transition-transform duration-200 text-[var(--muted)] ${expandedCampaignId === campaign.id ? 'rotate-90' : ''}`}
+                fill="none" viewBox="0 0 24 24" stroke="currentColor"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+              </svg>
+              <div className="truncate">
+                <p className="font-semibold text-sm text-[var(--foreground)] truncate">
+                  &ldquo;{campaign.search_query}&rdquo;
+                </p>
+                <p className="text-[10px] md:text-xs mt-0.5 text-[var(--muted)] uppercase font-bold tracking-wider">
+                  {new Date(campaign.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  {' · '}
+                  <span className="text-[var(--accent)]">{campaign.leads?.length || 0} leads</span>
+                </p>
               </div>
             </div>
 
-            <div className="flex space-x-3" onClick={(e) => e.stopPropagation()}>
+            <div onClick={(e) => e.stopPropagation()} className="ml-2">
               <button
                 onClick={() => exportToCsv(campaign)}
-                disabled={!campaign.leads || campaign.leads.length === 0}
-                className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-700 shadow-sm text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50 transition-colors"
+                disabled={!campaign.leads?.length}
+                className="text-[10px] md:text-xs px-2.5 md:px-3.5 py-1.5 rounded-lg border-[var(--border)] text-[var(--foreground)] bg-transparent border hover:bg-[var(--surface)] transition-colors disabled:opacity-40"
               >
-                <svg className="-ml-1 mr-2 h-4 w-4 text-gray-500 dark:text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                </svg>
-                Export CSV
+                CSV
               </button>
             </div>
           </div>
 
-          {/* Collapsible Leads Table */}
+          {/* Leads — Responsive View */}
           {expandedCampaignId === campaign.id && (
-            <div className="border-t border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-950/50">
-              {(!campaign.leads || campaign.leads.length === 0) ? (
-                <div className="p-6 text-center text-gray-500 text-sm">No leads discovered in this campaign.</div>
+            <div className="bg-[var(--surface)]">
+              {!campaign.leads?.length ? (
+                <p className="p-6 text-sm text-center text-[var(--muted)]">No leads in this campaign.</p>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-800">
-                    <thead className="bg-gray-100 dark:bg-gray-900">
-                      <tr>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Prospect</th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Score</th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">AI Opening Line</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200 dark:divide-gray-800 bg-white dark:bg-gray-900/50">
-                      {campaign.leads.map((lead) => (
-                        <tr key={lead.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors duration-150">
-                          <td className="px-6 py-4">
-                            <div className="flex flex-col">
-                              <span className="text-sm font-medium text-gray-900 dark:text-white">{lead.full_name}</span>
-                              <span className="text-xs text-gray-500 dark:text-gray-400 truncate max-w-[200px]" title={lead.headline}>{lead.headline}</span>
-                              <a href={lead.linkedin_url} target="_blank" rel="noreferrer" className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline mt-1">LinkedIn ↗</a>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${
-                              lead.relevance_score >= 9 ? 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-400' : 
-                              lead.relevance_score >= 7 ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-400' : 
-                              'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'
-                            }`}>
-                              {lead.relevance_score}/10
-                            </span>
-                          </td>
-                          <td className="px-6 py-4">
-                            <div className="text-sm text-gray-700 dark:text-gray-300 italic border-l-2 border-indigo-200 dark:border-indigo-800 pl-3 py-1 selection:bg-indigo-100 dark:selection:bg-indigo-900">
-                              "{lead.suggested_opening_line}"
-                            </div>
-                          </td>
+                <>
+                  {/* MOBILE VIEW — Card-based (Hidden on desktop) */}
+                  <div className="md:hidden divide-y divide-[var(--border)]">
+                    {campaign.leads.map((lead) => (
+                      <div key={lead.id} className="p-4 space-y-3">
+                        <div className="flex justify-between items-start gap-3">
+                          <div className="min-w-0">
+                            <p className="font-bold text-sm text-[var(--foreground)]">{lead.full_name}</p>
+                            <p className="text-xs text-[var(--muted)] truncate mt-0.5">{lead.headline}</p>
+                          </div>
+                          <ScoreBadge score={lead.relevance_score} />
+                        </div>
+                        <div className="p-3 rounded-lg border border-[var(--border)] bg-[var(--background)]">
+                           <p className="text-xs text-[var(--muted)] font-bold uppercase tracking-widest mb-1.5 scale-90 origin-left">Targeting Opener</p>
+                           <p className="text-xs italic leading-relaxed text-[var(--foreground)]">&ldquo;{lead.suggested_opening_line}&rdquo;</p>
+                        </div>
+                        {lead.linkedin_url && (
+                          <a href={lead.linkedin_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-[var(--accent)]">
+                            LinkedIn ↗
+                          </a>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* DESKTOP VIEW — Table-based (Hidden on mobile) */}
+                  <div className="hidden md:block overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-[var(--border)]">
+                          <th className="px-6 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-[var(--muted)]">Prospect</th>
+                          <th className="px-6 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-[var(--muted)]">Score</th>
+                          <th className="px-6 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-[var(--muted)]">AI Opener</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                      </thead>
+                      <tbody>
+                        {campaign.leads.map((lead) => (
+                          <tr key={lead.id} className="border-b border-[var(--border)] last:border-0">
+                            <td className="px-6 py-5">
+                              <p className="font-bold text-sm text-[var(--foreground)]">{lead.full_name}</p>
+                              <p className="text-xs mt-0.5 truncate max-w-[180px] text-[var(--muted)]" title={lead.headline}>{lead.headline}</p>
+                              {lead.linkedin_url && (
+                                <a href={lead.linkedin_url} target="_blank" rel="noreferrer" className="text-[10px] font-bold uppercase tracking-widest mt-2 block text-[var(--accent)]">LinkedIn ↗</a>
+                              )}
+                            </td>
+                            <td className="px-6 py-5 whitespace-nowrap align-top pt-6">
+                              <ScoreBadge score={lead.relevance_score} />
+                            </td>
+                            <td className="px-6 py-5 md:max-w-xs lg:max-w-md">
+                              <div className="border-l-2 border-[var(--accent)] pl-4 py-1">
+                                <p className="text-sm italic leading-relaxed text-[var(--foreground)]">&ldquo;{lead.suggested_opening_line}&rdquo;</p>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
               )}
             </div>
           )}
         </div>
       ))}
     </div>
+  );
+}
+
+function ScoreBadge({ score }: { score: number }) {
+  const isHigh = score >= 9;
+  const isMid = score >= 7;
+  
+  return (
+    <span
+      className="text-[10px] font-bold px-2 py-0.5 rounded-full border"
+      style={{
+        background: isHigh ? 'rgba(20, 184, 166, 0.1)' : isMid ? 'rgba(217, 119, 87, 0.1)' : 'rgba(122, 117, 112, 0.1)',
+        borderColor: isHigh ? 'rgba(20, 184, 166, 0.2)' : isMid ? 'rgba(217, 119, 87, 0.2)' : 'rgba(122, 117, 112, 0.2)',
+        color: isHigh ? '#14b8a6' : isMid ? '#d97757' : 'var(--muted)',
+      }}
+    >
+      {score}/10
+    </span>
   );
 }

@@ -15,36 +15,61 @@ export function Navbar({ userEmail }: { userEmail?: string | null }) {
   };
 
   return (
-    <nav className="bg-white border-b border-gray-200 dark:bg-gray-950 dark:border-gray-800">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-16">
-          <div className="flex">
-            <Link href="/" className="flex-shrink-0 flex items-center gap-2">
-              <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-lg leading-none tracking-tighter">G</span>
-              </div>
-              <span className="font-bold text-xl text-gray-900 dark:text-white tracking-tight">
-                Ghost SDR
-              </span>
-            </Link>
-          </div>
+    <nav style={{ borderBottom: '1px solid var(--border)', background: 'var(--background)' }} className="sticky top-0 z-50 backdrop-blur-sm bg-opacity-90">
+      <div className="max-w-6xl mx-auto px-6">
+        <div className="flex justify-between items-center h-14">
 
-          <div className="flex items-center space-x-6">
+          {/* Logo — Serif wordmark */}
+          <Link href="/" className="flex items-center gap-2.5 group">
+            <div
+              className="w-7 h-7 rounded-md flex items-center justify-center text-white text-sm font-bold transition-opacity group-hover:opacity-80"
+              style={{ background: 'var(--accent)' }}
+            >
+              G
+            </div>
+            <span className="font-editorial font-semibold text-base tracking-tight" style={{ color: 'var(--foreground)' }}>
+              Ghost SDR
+            </span>
+          </Link>
+
+          {/* Right nav */}
+          <div className="flex items-center gap-6">
             {userEmail ? (
               <>
-                <Link href="/campaigns" className="text-sm font-medium text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition-colors">
+                <Link
+                  href="/campaigns"
+                  className="text-sm transition-colors"
+                  style={{ color: 'var(--muted)' }}
+                  onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--foreground)')}
+                  onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--muted)')}
+                >
                   Pipeline
                 </Link>
-                <Link href="/settings" className="text-sm font-medium text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition-colors">
+                <Link
+                  href="/settings"
+                  className="text-sm transition-colors"
+                  style={{ color: 'var(--muted)' }}
+                  onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--foreground)')}
+                  onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--muted)')}
+                >
                   Settings
                 </Link>
-                <span className="text-sm text-gray-300 dark:text-gray-700">|</span>
-                <span className="text-sm text-gray-500 dark:text-gray-400 hidden sm:block">
+
+                <span className="text-sm hidden md:block truncate max-w-[160px]" style={{ color: 'var(--muted)', fontSize: '13px' }}>
                   {userEmail}
                 </span>
+
                 <button
                   onClick={handleSignOut}
-                  className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
+                  className="text-sm px-3.5 py-1.5 rounded-lg transition-all"
+                  style={{
+                    border: '1px solid var(--border)',
+                    color: 'var(--foreground)',
+                    background: 'transparent',
+                    fontSize: '13px',
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--surface)')}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                 >
                   Sign out
                 </button>
@@ -53,13 +78,17 @@ export function Navbar({ userEmail }: { userEmail?: string | null }) {
               <>
                 <Link
                   href="/login"
-                  className="text-sm font-medium text-gray-700 dark:text-gray-200 hover:text-indigo-600 dark:hover:text-indigo-400"
+                  className="text-sm transition-colors"
+                  style={{ color: 'var(--muted)' }}
+                  onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--foreground)')}
+                  onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--muted)')}
                 >
                   Sign in
                 </Link>
                 <Link
                   href="/signup"
-                  className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
+                  className="text-sm px-4 py-1.5 rounded-lg text-white font-medium transition-opacity hover:opacity-90"
+                  style={{ background: 'var(--accent)', fontSize: '13px' }}
                 >
                   Get started
                 </Link>
