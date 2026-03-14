@@ -2,7 +2,8 @@ import os
 import requests
 import json
 import re
-from anthropic import Anthropic
+from groq import Groq
+# from anthropic import Anthropic
 from pydantic import BaseModel, Field
 from typing import List, Optional
 from dotenv import load_dotenv
@@ -26,14 +27,23 @@ class ScoutOutput(BaseModel):
 class ScoutAgent:
     def __init__(self):
         self.serper_key = os.getenv("SERPER_API_KEY") 
-        anthropic_key = os.getenv("ANTHROPIC_API_KEY")
+        # anthropic_key = os.getenv("ANTHROPIC_API_KEY")
         
-        if anthropic_key and self.serper_key:
-            print(f"✅ Anthropic Brain & Serper OSINT connected.")
+        # if anthropic_key and self.serper_key:
+        #     print(f"✅ Anthropic Brain & Serper OSINT connected.")
+        # else:
+        #     print("❌ API Keys missing from .env!")
+            
+        # self.anthropic = Anthropic(api_key=anthropic_key)
+
+        # --- GROQ SETUP (ACTIVE) ---
+        groq_key = os.getenv("GROQ_API_KEY")
+        if groq_key and self.serper_key:
+            print("✅ Groq (Llama 3) Brain & Serper OSINT connected.")
         else:
             print("❌ API Keys missing from .env!")
             
-        self.anthropic = Anthropic(api_key=anthropic_key)
+        self.client = Groq(api_key=groq_key)
 
     def discover_leads(self, keywords: str, limit: int = 3):
         """Hunts for LinkedIn leads using Google Dorking."""
@@ -120,17 +130,32 @@ class ScoutAgent:
 
         try:
             print(f"🧠 Qualifying: {lead_data['full_name']}...")
-            response = self.anthropic.messages.create(
-                model="claude-sonnet-4-6", 
-                max_tokens=800,
-                temperature=0.2, # Added slightly more temperature for line creativity
-                messages=[{"role": "user", "content": prompt}],
-            )
+            # response = self.anthropic.messages.create(
+            #     model="claude-sonnet-4-6", 
+            #     max_tokens=800,
+            #     temperature=0.2, # Added slightly more temperature for line creativity
+            #     messages=[{"role": "user", "content": prompt}],
+            # )
             
-            content = response.content[0].text
-            json_match = re.search(r'\{.*\}', content, re.DOTALL)
-            raw_json = json.loads(json_match.group(0)) if json_match else json.loads(content)
+            # content = response.content[0].text
+            # json_match = re.search(r'\{.*\}', content, re.DOTALL)
+            # raw_json = json.loads(json_match.group(0)) if json_match else json.loads(content)
                 
+            # return ScoutOutput(**raw_json)
+
+            # --- GROQ (LLAMA 3) IMPLEMENTATION [ACTIVE] ---
+            response = self.client.chat.completions.create(
+                model="llama-3.1-8b-instant", 
+                messages=[
+                    {"role": "system", "content": system_context},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.2,
+                response_format={"type": "json_object"} 
+            )
+            content = response.choices[0].message.content
+            raw_json = json.loads(content)
+
             return ScoutOutput(**raw_json)
             
         except Exception as e:
