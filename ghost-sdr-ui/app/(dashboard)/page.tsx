@@ -75,9 +75,10 @@ export default function Home() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Please sign in to hunt leads.');
 
+      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
       const endpoint = mode === 'url'
-        ? 'http://127.0.0.1:8000/api/research'
-        : 'http://127.0.0.1:8000/api/hunt';
+        ? `${API_BASE_URL}/api/research`
+        : `${API_BASE_URL}/api/hunt`;
 
       const body = mode === 'url'
         ? { linkedin_url: query }
