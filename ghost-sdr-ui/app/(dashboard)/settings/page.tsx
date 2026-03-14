@@ -2,13 +2,20 @@
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/utils/supabase/client';
+import { Save, Loader2, CheckCircle, AlertTriangle, Building2, Target, Mic, BrainCircuit } from 'lucide-react';
+
+const toneOptions = [
+  'Professional & Direct',
+  'Casual & Friendly',
+  'Challenger (Provocative)',
+  'Data-Driven & Analytical',
+];
 
 export default function SettingsPage() {
   const [companyName, setCompanyName] = useState('');
   const [valueProposition, setValueProposition] = useState('');
   const [targetAudience, setTargetAudience] = useState('');
   const [toneOfVoice, setToneOfVoice] = useState('Professional & Direct');
-  
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -31,7 +38,6 @@ export default function SettingsPage() {
         setTargetAudience(data.target_audience || '');
         setToneOfVoice(data.tone_of_voice || 'Professional & Direct');
       }
-      
       setLoading(false);
     }
     loadProfile();
@@ -75,158 +81,174 @@ export default function SettingsPage() {
     if (error) {
       setMessage({ type: 'error', text: error.message });
     } else {
-      setMessage({ type: 'success', text: 'Settings saved. Your AI agent will use this context on the next hunt.' });
+      setMessage({ type: 'success', text: 'Configuration saved. Agent will use this context on next hunt.' });
     }
-    
+
     setSaving(false);
   };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="w-5 h-5 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: 'var(--accent)', borderTopColor: 'transparent' }} />
+        <Loader2 className="w-5 h-5 text-primary animate-spin" />
       </div>
     );
   }
 
-  // Shared input style
-  const inputStyle = {
-    background: 'var(--surface)',
-    border: '1px solid var(--border)',
-    color: 'var(--foreground)',
-    borderRadius: '8px',
-    width: '100%',
-    padding: '10px 14px',
-    fontSize: '14px',
-    fontFamily: 'inherit',
-    outline: 'none',
-    transition: 'border-color 0.15s',
-  };
+  const inputClass = "w-full px-4 py-2.5 rounded-sm font-mono text-sm bg-transparent border border-input text-foreground focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/30 transition-all duration-200 placeholder:text-muted-foreground/60";
+
+  const cardSections = [
+    {
+      field: '01',
+      title: 'Company Identity',
+      icon: Building2,
+      iconColor: 'text-primary',
+      iconBg: 'bg-primary/10 border-primary/20',
+      content: (
+        <input
+          type="text"
+          id="company-name"
+          required
+          value={companyName}
+          onChange={(e) => setCompanyName(e.target.value)}
+          placeholder="e.g. Acme Corp"
+          className={inputClass}
+        />
+      ),
+    },
+    {
+      field: '02',
+      title: 'Value Proposition',
+      icon: BrainCircuit,
+      iconColor: 'text-emerald-600 dark:text-emerald-400',
+      iconBg: 'bg-emerald-100 border-emerald-200 dark:bg-emerald-500/10 dark:border-emerald-500/20',
+      hint: 'What problem do you solve? The AI uses this to write personalized openers.',
+      content: (
+        <textarea
+          id="value-prop"
+          rows={4}
+          required
+          value={valueProposition}
+          onChange={(e) => setValueProposition(e.target.value)}
+          placeholder="e.g. We help remote engineering teams ship 30% faster by automating CI/CD pipelines."
+          className={`${inputClass} resize-vertical`}
+        />
+      ),
+    },
+    {
+      field: '03',
+      title: 'Target ICP',
+      icon: Target,
+      iconColor: 'text-amber-600 dark:text-amber-400',
+      iconBg: 'bg-amber-100 border-amber-200 dark:bg-amber-500/10 dark:border-amber-500/20',
+      content: (
+        <input
+          type="text"
+          id="target-audience"
+          required
+          value={targetAudience}
+          onChange={(e) => setTargetAudience(e.target.value)}
+          placeholder="e.g. CTOs and VP Engineering at Series B tech startups"
+          className={inputClass}
+        />
+      ),
+    },
+  ];
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      <div className="flex-1 overflow-y-auto">
-        <div className="max-w-4xl mx-auto px-6 md:px-10 py-10 md:py-16">
-          
-          {/* Page Header */}
-          <div className="mb-10">
-            <h1 className="font-editorial text-3xl font-semibold mb-2" style={{ color: 'var(--foreground)' }}>
-              Agent Settings
-            </h1>
-            <p className="text-sm" style={{ color: 'var(--muted)' }}>
-              Define your business context. The AI will use this to qualify leads and craft personalised outreach.
-            </p>
-          </div>
-
-          {/* Divider */}
-          <div className="mb-8" style={{ borderTop: '1px solid var(--border)' }} />
-
-          <form onSubmit={handleSave} className="space-y-8 max-w-2xl">
-            {/* ... rest of the form ... */}
-
-        {/* Company */}
+      {/* Top Bar */}
+      <div className="shrink-0 px-6 lg:px-8 h-14 flex items-center border-b border-border bg-background">
         <div>
-          <label htmlFor="company-name" className="block text-sm font-medium mb-1.5" style={{ color: 'var(--foreground)' }}>
-            Company Name
-          </label>
-          <input
-            type="text"
-            id="company-name"
-            required
-            value={companyName}
-            onChange={(e) => setCompanyName(e.target.value)}
-            placeholder="e.g. Acme Corp"
-            style={inputStyle}
-          />
+          <h1 className="font-display font-bold text-base uppercase tracking-tight text-foreground">Agent Configuration</h1>
+          <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">AI context & persona settings</p>
         </div>
+      </div>
 
-        {/* Value Prop */}
-        <div>
-          <label htmlFor="value-prop" className="block text-sm font-medium mb-1" style={{ color: 'var(--foreground)' }}>
-            Value Proposition
-          </label>
-          <p className="text-xs mb-2" style={{ color: 'var(--muted)' }}>
-            What problem do you solve? Be specific. The AI will use this to write personalized opening lines.
-          </p>
-          <textarea
-            id="value-prop"
-            rows={4}
-            required
-            value={valueProposition}
-            onChange={(e) => setValueProposition(e.target.value)}
-            placeholder="e.g. We help remote engineering teams ship 30% faster by automating their CI/CD pipelines with real-time Slack incident alerts."
-            style={{ ...inputStyle, resize: 'vertical' }}
-          />
-        </div>
+      {/* Scrollable Content */}
+      <div className="flex-1 overflow-y-auto scrollbar-hide bg-background">
+        <div className="px-6 lg:px-8 py-8 max-w-3xl space-y-5">
+          <form onSubmit={handleSave} className="space-y-5">
 
-        {/* Target Audience */}
-        <div>
-          <label htmlFor="target-audience" className="block text-sm font-medium mb-1.5" style={{ color: 'var(--foreground)' }}>
-            Target Audience (ICP)
-          </label>
-          <input
-            type="text"
-            id="target-audience"
-            required
-            value={targetAudience}
-            onChange={(e) => setTargetAudience(e.target.value)}
-            placeholder="e.g. CTOs and VP Engineering at Series B tech startups"
-            style={inputStyle}
-          />
-        </div>
+            {cardSections.map((section) => (
+              <div
+                key={section.field}
+                className="bg-card border border-border rounded-md p-6 space-y-4 transition-all duration-300 hover:border-primary/20"
+              >
+                <div className="flex items-center gap-3">
+                  <div className={`w-8 h-8 border rounded-sm flex items-center justify-center shrink-0 ${section.iconBg}`}>
+                    <section.icon className={`w-4 h-4 ${section.iconColor}`} />
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">Field {section.field}</p>
+                    <h3 className="font-display font-bold text-sm uppercase tracking-tight text-foreground">{section.title}</h3>
+                  </div>
+                </div>
+                {section.hint && (
+                  <p className="font-mono text-[11px] text-muted-foreground">{section.hint}</p>
+                )}
+                {section.content}
+              </div>
+            ))}
 
-        {/* Tone */}
-        <div>
-          <label htmlFor="tone" className="block text-sm font-medium mb-1.5" style={{ color: 'var(--foreground)' }}>
-            AI Tone of Voice
-          </label>
-          <select
-            id="tone"
-            value={toneOfVoice}
-            onChange={(e) => setToneOfVoice(e.target.value)}
-            style={{ ...inputStyle, cursor: 'pointer' }}
-          >
-            <option>Professional &amp; Direct</option>
-            <option>Casual &amp; Friendly</option>
-            <option>Challenger (Provocative)</option>
-            <option>Data-Driven &amp; Analytical</option>
-          </select>
-        </div>
+            {/* Tone Selector */}
+            <div className="bg-card border border-border rounded-md p-6 space-y-4 transition-all duration-300 hover:border-primary/20">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 bg-primary/10 border border-primary/20 rounded-sm flex items-center justify-center shrink-0">
+                  <Mic className="w-4 h-4 text-primary" />
+                </div>
+                <div>
+                  <p className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">Field 04</p>
+                  <h3 className="font-display font-bold text-sm uppercase tracking-tight text-foreground">AI Tone of Voice</h3>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {toneOptions.map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setToneOfVoice(t)}
+                    className={`px-3 py-2.5 rounded-sm text-[11px] font-mono uppercase tracking-wide text-left border transition-all duration-200 ${
+                      toneOfVoice === t
+                        ? 'bg-primary/10 border-primary/30 text-foreground'
+                        : 'border-border text-muted-foreground hover:text-foreground hover:border-primary/20 hover:bg-muted'
+                    }`}
+                  >
+                    {toneOfVoice === t && <span className="text-primary mr-1.5">▸</span>}{t}
+                  </button>
+                ))}
+              </div>
+            </div>
 
-        {/* Feedback message */}
-        {message && (
-          <div
-            className="p-3.5 rounded-lg text-sm"
-            style={{
-              background: message.type === 'success' ? '#f0fdf4' : '#fef2f2',
-              border: `1px solid ${message.type === 'success' ? '#bbf7d0' : '#fecaca'}`,
-              color: message.type === 'success' ? '#15803d' : '#dc2626',
-            }}
-          >
-            {message.text}
-          </div>
-        )}
-
-        {/* Submit */}
-        <div className="pt-2">
-          <button
-            type="submit"
-            disabled={saving}
-            className="px-6 py-2.5 rounded-lg text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2"
-            style={{ background: 'var(--accent)' }}
-          >
-            {saving && (
-              <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-              </svg>
+            {/* Feedback */}
+            {message && (
+              <div className={`flex items-start gap-3 p-4 rounded-sm border ${
+                message.type === 'success'
+                  ? 'bg-emerald-50 border-emerald-200 dark:bg-emerald-500/5 dark:border-emerald-500/20'
+                  : 'bg-destructive/5 border-destructive/20'
+              }`}>
+                {message.type === 'success'
+                  ? <CheckCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+                  : <AlertTriangle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
+                }
+                <p className={`font-mono text-sm ${message.type === 'success' ? 'text-emerald-700 dark:text-emerald-400' : 'text-destructive'}`}>
+                  {message.text}
+                </p>
+              </div>
             )}
-            {saving ? 'Saving...' : 'Save settings'}
-          </button>
+
+            {/* Submit */}
+            <button
+              type="submit"
+              disabled={saving}
+              className="flex items-center gap-2 px-6 py-2.5 bg-primary hover:brightness-110 rounded-sm text-primary-foreground text-xs font-mono uppercase tracking-widest transition-all duration-200 glow-primary active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+              {saving ? 'Saving Config...' : 'Save Configuration'}
+            </button>
+          </form>
         </div>
-      </form>
+      </div>
     </div>
-  </div>
-</div>
   );
 }

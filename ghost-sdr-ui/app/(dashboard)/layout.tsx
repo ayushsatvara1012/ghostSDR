@@ -14,7 +14,6 @@ export default async function DashboardLayout({
     redirect('/login');
   }
 
-  // Fetch recent searches for sidebar history
   const { data: recentCampaigns } = await supabase
     .from('campaigns')
     .select('search_query')
@@ -25,14 +24,9 @@ export default async function DashboardLayout({
   const recentSearches = (recentCampaigns || []).map(c => c.search_query);
 
   return (
-    // Full-screen flex shell — AI Chat App pattern
-    // Mobile: column direction (Sidebar/Nav at bottom), Desktop: row direction
-    <div className="flex flex-col md:flex-row h-[100dvh] overflow-hidden" style={{ background: 'var(--background)' }}>
-      {/* Responsive Sidebar component handles its own MD hide/show logic */}
+    <div className="min-h-screen bg-background grid-bg text-foreground flex flex-col lg:flex-row overflow-hidden h-screen">
       <Sidebar userEmail={user.email} recentSearches={recentSearches} />
-
-      {/* Scrollable Main Area */}
-      <main className="flex flex-1 flex-col overflow-hidden relative">
+      <main className="flex-1 overflow-y-auto relative flex flex-col min-h-0">
         {children}
       </main>
     </div>

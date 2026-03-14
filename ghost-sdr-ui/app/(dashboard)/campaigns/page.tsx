@@ -36,31 +36,30 @@ export default async function CampaignsPage() {
   }));
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
-      <div className="flex-1 overflow-y-auto">
-        <div className="max-w-4xl mx-auto px-6 md:px-10 py-10 md:py-16">
+    <div className="flex flex-col h-full overflow-hidden bg-background">
+      <div className="flex-1 overflow-y-auto grid-bg">
+        <div className="w-full max-w-4xl mx-auto px-6 md:px-10 py-10 md:py-16">
           
           {/* Page Header */}
           <div className="flex items-end justify-between mb-10">
             <div>
-              <h1 className="font-editorial text-3xl font-semibold mb-1.5" style={{ color: 'var(--foreground)' }}>
+              <h1 className="font-display font-bold text-3xl uppercase tracking-tight text-foreground mb-1.5">
                 Sales Pipeline
               </h1>
-              <p className="text-sm" style={{ color: 'var(--muted)' }}>
+              <p className="font-mono text-sm text-muted-foreground">
                 All your hunts, AI-qualified leads, and outreach lines in one place.
               </p>
             </div>
             <a
               href="/"
-              className="text-sm px-4 py-2 rounded-lg font-medium text-white transition-opacity hover:opacity-90"
-              style={{ background: 'var(--accent)' }}
+              className="text-xs px-4 py-2 rounded-sm font-mono uppercase tracking-widest text-primary-foreground bg-primary hover:brightness-110 transition-all duration-200 glow-primary"
             >
               New Hunt
             </a>
           </div>
 
           {/* Divider */}
-          <div className="mb-8" style={{ borderTop: '1px solid var(--border)' }} />
+          <div className="mb-8 border-t border-border" />
 
           <CampaignsTable initialCampaigns={campaigns} />
         </div>

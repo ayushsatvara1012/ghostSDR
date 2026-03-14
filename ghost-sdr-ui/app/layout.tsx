@@ -1,17 +1,27 @@
 import type { Metadata } from 'next';
-import { Inter, Lora } from 'next/font/google';
+import { Inter, Barlow_Condensed, JetBrains_Mono } from 'next/font/google';
+import { ThemeProvider } from '@/components/ThemeProvider';
 import './globals.css';
 
 const inter = Inter({
   subsets: ['latin'],
   variable: '--font-inter',
   display: 'swap',
+  weight: ['400', '500', '600'],
 });
 
-const lora = Lora({
+const barlowCondensed = Barlow_Condensed({
   subsets: ['latin'],
-  variable: '--font-lora',
+  variable: '--font-barlow',
   display: 'swap',
+  weight: ['600', '700', '800'],
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ['latin'],
+  variable: '--font-jetbrains',
+  display: 'swap',
+  weight: ['400', '500', '600', '700'],
 });
 
 export const metadata: Metadata = {
@@ -33,15 +43,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-      </head>
       <body
-        className={`${inter.variable} ${lora.variable} antialiased`}
-        style={{ background: 'var(--background)', color: 'var(--foreground)' }}
+        className={`${inter.variable} ${barlowCondensed.variable} ${jetbrainsMono.variable} antialiased bg-background text-foreground`}
+        suppressHydrationWarning
       >
-        {children}
+        <ThemeProvider>
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   );

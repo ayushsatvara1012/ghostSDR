@@ -13,6 +13,7 @@ DROP TABLE IF EXISTS public.profiles CASCADE;
 CREATE TABLE public.users (
   id uuid PRIMARY KEY REFERENCES auth.users NOT NULL,
   email text UNIQUE NOT NULL,
+  hashed_password text, -- Optional: Syncs with auth.users encrypted_password
   stripe_customer_id text UNIQUE,
   tier text DEFAULT 'free',
   api_credits int DEFAULT 50,
@@ -58,8 +59,8 @@ CREATE TABLE public.leads (
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger AS $$
 BEGIN
-  INSERT INTO public.users (id, email, api_credits)
-  VALUES (new.id, new.email, 50);
+  INSERT INTO public.users (id, email, hashed_password, api_credits)
+  VALUES (new.id, new.email, new.encrypted_password, 50);
   RETURN new;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -72,8 +73,8 @@ CREATE TRIGGER on_auth_user_created
 
 -- 7. BACKFILL EXISTING USERS
 -- If you already have users in Auth, this copies them to public.users
-INSERT INTO public.users (id, email, api_credits)
-SELECT id, email, 50 FROM auth.users
+INSERT INTO public.users (id, email, hashed_password, api_credits)
+SELECT id, email, encrypted_password, 50 FROM auth.users
 ON CONFLICT (id) DO NOTHING;
 
 -- 8. ENABLE ROW LEVEL SECURITY (RLS)

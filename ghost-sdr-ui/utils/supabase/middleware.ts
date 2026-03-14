@@ -46,7 +46,12 @@ export async function updateSession(request: NextRequest) {
   }
 
   // Redirect authenticated users away from the auth pages to home
-  if (user && isAuthPage && !request.nextUrl.pathname.startsWith('/auth/callback')) {
+  // UNLESS they are on the login page with a confirmed flag (so they can see the message)
+  const isConfirmedLogin = 
+    request.nextUrl.pathname.startsWith('/login') && 
+    request.nextUrl.searchParams.get('confirmed') === 'true';
+
+  if (user && isAuthPage && !request.nextUrl.pathname.startsWith('/auth/callback') && !isConfirmedLogin) {
     const url = request.nextUrl.clone()
     url.pathname = '/'
     return NextResponse.redirect(url)
