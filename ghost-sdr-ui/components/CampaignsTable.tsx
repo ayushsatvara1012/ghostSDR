@@ -1,11 +1,28 @@
 'use client';
 
 import { useState } from 'react';
+import { Youtube, MessageSquare, Mic, Newspaper } from 'lucide-react';
 
+// Platform config — mirrors page.tsx PLATFORM_CONFIG
+const PLATFORM_ICONS: Record<string, { icon: React.ElementType; color: string }> = {
+  youtube:  { icon: Youtube,       color: 'text-red-500 dark:text-red-400' },
+  podcast:  { icon: Mic,           color: 'text-purple-500 dark:text-purple-400' },
+  reddit:   { icon: MessageSquare, color: 'text-orange-500 dark:text-orange-400' },
+  news:     { icon: Newspaper,     color: 'text-blue-500 dark:text-blue-400' },
+};
+
+// Dual-format insight — handles both v2 SalesTrigger and v3 IntentSignal
 interface Insight {
-  trigger_type: string;
-  evidence: string;
-  relevance_score: number;
+  // v2 fields
+  trigger_type?: string;
+  evidence?: string;
+  relevance_score?: number;
+  // v3 fields
+  platform?: string;
+  signal_type?: string;
+  intent_score?: number;
+  raw_quote?: string;
+  source_title?: string;
 }
 
 interface Lead {
@@ -117,7 +134,7 @@ export function CampaignsTable({ initialCampaigns }: { initialCampaigns: Campaig
           </div>
 
           {/* Smooth Accordion Content */}
-          <div 
+          <div
             className={`grid transition-all duration-300 ease-in-out ${
               expandedCampaignId === campaign.id ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
             }`}
@@ -140,9 +157,11 @@ export function CampaignsTable({ initialCampaigns }: { initialCampaigns: Campaig
                             <ScoreBadge score={lead.relevance_score} />
                           </div>
                           <div className="p-3 rounded-sm border border-border bg-background/50">
-                             <p className="text-[10px] text-primary font-mono uppercase tracking-[0.2em] mb-2">TARGETING_OPENER_AI</p>
-                             <p className="text-xs italic leading-relaxed text-foreground">&ldquo;{lead.suggested_opening_line}&rdquo;</p>
+                            <p className="text-[10px] text-primary font-mono uppercase tracking-[0.2em] mb-2">TARGETING_OPENER_AI</p>
+                            <p className="text-xs italic leading-relaxed text-foreground">&ldquo;{lead.suggested_opening_line}&rdquo;</p>
                           </div>
+                          {/* Signal platform icons (v3 key_insights) */}
+                          <InsightPlatforms insights={lead.key_insights} />
                           {lead.linkedin_url && (
                             <a href={lead.linkedin_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-[0.15em] text-primary hover:brightness-110">
                               VIEW_DOSSIER ↗
@@ -159,6 +178,7 @@ export function CampaignsTable({ initialCampaigns }: { initialCampaigns: Campaig
                           <tr className="border-b border-border bg-muted/20">
                             <th className="px-6 py-4 text-left text-[10px] font-mono uppercase tracking-[0.2em] text-muted-foreground">Prospect_ID</th>
                             <th className="px-6 py-4 text-left text-[10px] font-mono uppercase tracking-[0.2em] text-muted-foreground">Score</th>
+                            <th className="px-6 py-4 text-left text-[10px] font-mono uppercase tracking-[0.2em] text-muted-foreground">Signals</th>
                             <th className="px-6 py-4 text-left text-[10px] font-mono uppercase tracking-[0.2em] text-muted-foreground">Tactical_Opener</th>
                           </tr>
                         </thead>
@@ -176,6 +196,9 @@ export function CampaignsTable({ initialCampaigns }: { initialCampaigns: Campaig
                               </td>
                               <td className="px-6 py-5 whitespace-nowrap align-top pt-6">
                                 <ScoreBadge score={lead.relevance_score} />
+                              </td>
+                              <td className="px-6 py-5 align-top pt-6">
+                                <InsightPlatforms insights={lead.key_insights} />
                               </td>
                               <td className="px-6 py-5 md:max-w-xs lg:max-w-md">
                                 <div className="border-l border-primary/30 pl-4 py-1.5 bg-background/30 rounded-r-sm">
@@ -198,17 +221,35 @@ export function CampaignsTable({ initialCampaigns }: { initialCampaigns: Campaig
   );
 }
 
+/** Renders platform icons extracted from key_insights (handles v2 + v3) */
+function InsightPlatforms({ insights }: { insights: Insight[] }) {
+  if (!insights?.length) return null;
+  const platforms = [...new Set(insights.map(i => i.platform).filter(Boolean))] as string[];
+  if (!platforms.length) return null;
+
+  return (
+    <div className="flex items-center gap-1.5 flex-wrap">
+      {platforms.map(p => {
+        const cfg = PLATFORM_ICONS[p];
+        if (!cfg) return null;
+        const Icon = cfg.icon;
+        return <Icon key={p} className={`w-3.5 h-3.5 ${cfg.color}`} title={p} />;
+      })}
+    </div>
+  );
+}
+
 function ScoreBadge({ score }: { score: number }) {
   const isHigh = score >= 9;
   const isMid = score >= 7;
-  
+
   return (
     <span
       className={`text-[10px] font-bold px-2 py-0.5 rounded-sm border uppercase tracking-wider ${
-        isHigh 
-          ? 'bg-emerald-500 text-white border-emerald-400' 
-          : isMid 
-            ? 'bg-amber-500 text-white border-amber-400' 
+        isHigh
+          ? 'bg-emerald-500 text-white border-emerald-400'
+          : isMid
+            ? 'bg-amber-500 text-white border-amber-400'
             : 'bg-muted text-muted-foreground border-border'
       }`}
     >

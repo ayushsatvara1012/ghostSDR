@@ -1,164 +1,274 @@
 import os
-import requests
-import json
 import re
-from groq import Groq
-# from anthropic import Anthropic
-from pydantic import BaseModel, Field
+import json
+import time
+import requests
 from typing import List, Optional
+from pydantic import BaseModel
 from dotenv import load_dotenv
+from ai_brain import AIBrain
+
+from signal_collectors import (
+    RawSignal,
+    SignalHarvester,
+    YouTubeCollector,
+    PodcastCollector,
+    RedditCollector,
+    NewsCollector,
+)
 
 load_dotenv()
 
-# --- Data Contracts ---
-class SalesTrigger(BaseModel):
-    trigger_type: str = Field(description="e.g. Hiring, New Tech Stack, Pain Point")
-    evidence: str = Field(description="The specific keyword or phrase from the snippet")
-    relevance_score: int = Field(description="1-10 score of how strong this lead is")
+# ──────────────────────────────────────────────────────────────────
+# PYDANTIC DATA CONTRACTS  (frontend TypeScript interfaces mirror these)
+# ──────────────────────────────────────────────────────────────────
 
-class ScoutOutput(BaseModel):
+class IntentSignal(BaseModel):
+    platform: str
+    signal_type: str
+    source_url: str
+    source_title: str
+    raw_quote: str
+    author_name: str
+    author_context: str
+    published_at: str
+    keywords_matched: List[str]
+    intent_score: int                        # 0-100
+    timestamp_in_content: Optional[str] = None
+
+
+class PainPoint(BaseModel):
+    description: str
+    evidence_source: str                     # "platform:source_title"
+    urgency: str                             # "immediate" | "near-term" | "strategic"
+
+
+class LeadProfile(BaseModel):
     full_name: str
-    linkedin_url: str
-    current_headline: str
-    key_insights: List[SalesTrigger]
+    company_name: str
+    title: str
+    linkedin_url: Optional[str] = None
+    email_guess: Optional[str] = None
+    company_website: Optional[str] = None
+    industry: str
+    company_size_est: str                    # "1-10" | "11-50" | "51-200" | "200-1000" | "1000+"
+    location: str
+    intent_signals: List[IntentSignal]
+    aggregate_intent_score: int              # 0-100
+    priority_tier: str                       # "A" | "B" | "C"
+    pain_points: List[PainPoint]
     suggested_opening_line: str
-    
-# --- The Scout Class ---
+    suggested_hook: str                      # 5 words max
+    best_channel: str                        # "LinkedIn DM" | "Email" | "Reddit DM" | "Phone"
+    follow_up_angle: str
+    platforms_found_on: List[str]
+    total_signals_found: int
+
+
+# ──────────────────────────────────────────────────────────────────
+# SIGNAL HARVESTER
+# ──────────────────────────────────────────────────────────────────
+
+class SignalHarvester:
+    def __init__(self):
+        serper_key = os.getenv("SERPER_API_KEY", "")
+        listennotes_key = os.getenv("LISTENNOTES_API_KEY")
+        self.youtube = YouTubeCollector(serper_key=serper_key)
+        self.podcast = PodcastCollector(listennotes_key=listennotes_key)
+        self.reddit = RedditCollector()
+        self.news = NewsCollector(serper_key=serper_key)
+
+    def harvest(
+        self,
+        keywords: str,
+        industry_hint: str = "general",
+        company_name: str = "",
+        platforms: Optional[List[str]] = None,
+    ) -> List[RawSignal]:
+        """Harvest signals from all enabled platforms. A single platform failure won't crash the hunt."""
+        enabled = set(platforms or ["youtube", "reddit", "news", "podcast"])
+
+        # Build keyword list for phrase matching
+        keyword_list = [k.strip() for k in keywords.replace(",", " ").split() if len(k.strip()) > 2]
+        if company_name:
+            keyword_list.append(company_name)
+
+        all_signals: List[RawSignal] = []
+
+        if "youtube" in enabled:
+            try:
+                sigs = self.youtube.collect(keywords, keyword_list, max_videos=4)
+                all_signals.extend(sigs)
+                print(f"  📺 YouTube: {len(sigs)} signals")
+            except Exception as e:
+                print(f"  ⚠️  YouTube collector failed: {e}")
+
+        if "reddit" in enabled:
+            try:
+                sigs = self.reddit.collect(keywords, keyword_list, industry_hint=industry_hint)
+                all_signals.extend(sigs)
+                print(f"  💬 Reddit: {len(sigs)} signals")
+            except Exception as e:
+                print(f"  ⚠️  Reddit collector failed: {e}")
+
+        if "news" in enabled:
+            try:
+                sigs = self.news.collect(keywords, keyword_list)
+                all_signals.extend(sigs)
+                print(f"  📰 News: {len(sigs)} signals")
+            except Exception as e:
+                print(f"  ⚠️  News collector failed: {e}")
+
+        if "podcast" in enabled:
+            try:
+                sigs = self.podcast.collect(keywords, keyword_list)
+                all_signals.extend(sigs)
+                print(f"  🎙️  Podcast: {len(sigs)} signals")
+            except Exception as e:
+                print(f"  ⚠️  Podcast collector failed: {e}")
+
+        print(f"  🔭 Total signals harvested: {len(all_signals)}")
+        return all_signals
+
+
+# ──────────────────────────────────────────────────────────────────
+# LINKEDIN RESOLVER
+# ──────────────────────────────────────────────────────────────────
+
+class LinkedInResolver:
+    def __init__(self, serper_key: str):
+        self.serper_key = serper_key
+
+    def find_profiles_for_keywords(self, keywords: str, limit: int = 3) -> List[dict]:
+        """Google Dork LinkedIn profiles matching keywords."""
+        try:
+            dork_query = f"site:linkedin.com/in/ {keywords}"
+            response = requests.post(
+                "https://google.serper.dev/search",
+                headers={"X-API-KEY": self.serper_key, "Content-Type": "application/json"},
+                json={"q": dork_query, "num": limit + 2},
+                timeout=15,
+            )
+            if response.status_code != 200:
+                print(f"  ⚠️  LinkedIn resolver error: {response.status_code}")
+                return []
+
+            organic = response.json().get("organic", [])
+            profiles = []
+            for result in organic[:limit]:
+                name = result.get("title", "").split(" - ")[0].strip()
+                if not name:
+                    continue
+                profiles.append({
+                    "full_name": name,
+                    "linkedin_url": result.get("link", ""),
+                    "headline": result.get("snippet", ""),
+                })
+            return profiles
+        except Exception as e:
+            print(f"  ⚠️  LinkedIn resolver failed: {e}")
+            return []
+
+# ──────────────────────────────────────────────────────────────────
+# SCOUT AGENT  (public API consumed by main.py)
+# ──────────────────────────────────────────────────────────────────
+
 class ScoutAgent:
     def __init__(self):
-        self.serper_key = os.getenv("SERPER_API_KEY") 
-        # anthropic_key = os.getenv("ANTHROPIC_API_KEY")
-        
-        # if anthropic_key and self.serper_key:
-        #     print(f"✅ Anthropic Brain & Serper OSINT connected.")
-        # else:
-        #     print("❌ API Keys missing from .env!")
-            
-        # self.anthropic = Anthropic(api_key=anthropic_key)
+        serper_key = os.getenv("SERPER_API_KEY", "")
+        self.harvester = SignalHarvester()
+        self.resolver = LinkedInResolver(serper_key=serper_key)
+        self.brain = AIBrain()
+        print("✅ Ghost SDR Scout Agent v3.0")
 
-        # --- GROQ SETUP (ACTIVE) ---
-        groq_key = os.getenv("GROQ_API_KEY")
-        if groq_key and self.serper_key:
-            print("✅ Groq (Llama 3) Brain & Serper OSINT connected.")
-        else:
-            print("❌ API Keys missing from .env!")
-            
-        self.client = Groq(api_key=groq_key)
+    # ── v3 Primary Method ──────────────────────────────────────────
 
-    def discover_leads(self, keywords: str, limit: int = 3):
-        """Hunts for LinkedIn leads using Google Dorking."""
-        print(f"🎯 Hunting for leads matching: {keywords}")
-        
-        if not self.serper_key:
-            raise ValueError("SERPER_API_KEY is missing.")
+    def hunt(
+        self,
+        keywords: str,
+        sdr_context: dict,
+        industry_hint: str = "general",
+        max_leads: int = 5,
+        platforms: Optional[List[str]] = None,
+    ) -> List[LeadProfile]:
+        """Full v3 multi-platform hunt: harvest signals → resolve LinkedIn → qualify with Claude."""
+        print(f"\n🎯 [v3 Hunt] Keywords: {keywords}")
 
-        # Google Dork: Forces search to only look at LinkedIn profiles
-        dork_query = f"site:linkedin.com/in/ {keywords}"
-        
-        url = "https://google.serper.dev/search"
-        payload = json.dumps({"q": dork_query, "num": limit})
-        headers = {
-            'X-API-KEY': self.serper_key,
-            'Content-Type': 'application/json'
-        }
-        
-        response = requests.post(url, headers=headers, data=payload, timeout=15)
-        
-        if response.status_code != 200:
-            raise ValueError(f"OSINT Search Error: {response.text}")
-            
-        organic_results = response.json().get("organic", [])
-        
-        leads = []
-        for result in organic_results:
-            raw_title = result.get("title", "")
-            clean_name = raw_title.split(" - ")[0].strip()
-            
-            leads.append({
-                "full_name": clean_name,
-                "linkedin_url": result.get("link", ""),
-                "headline": result.get("snippet", "") # Google's text snippet
-            })
-            
-        return leads
+        # Step 1: Harvest signals from all enabled platforms
+        raw_signals = self.harvester.harvest(
+            keywords=keywords,
+            industry_hint=industry_hint,
+            company_name=sdr_context.get("company_name", ""),
+            platforms=platforms,
+        )
 
-    def analyze_profile(self, lead_data: dict, sdr_context: Optional[dict] = None) -> ScoutOutput:
-        """The 'Brain' logic that qualifies the lead."""
-        
-        system_context = "You are an elite Sales Development Representative."
-        
-        if sdr_context:
-            system_context += f"""
-            You work for a company called '{sdr_context.get("company_name", "Our Company")}'.
-            Your Value Proposition is: {sdr_context.get("value_proposition", "")}
-            Your Target Audience is: {sdr_context.get("target_audience", "")}
-            
-            When writing the suggested email opening line for this lead, you MUST craft it specifically 
-            touting your company's value proposition against their publicly available LinkedIn data. 
-            Write in a {sdr_context.get("tone_of_voice", "Professional")} tone. Do not write a full email, 
-            only write a single opening sentence.
-            """
+        # Step 2: Find LinkedIn profiles via Google dorking
+        linkedin_profiles = self.resolver.find_profiles_for_keywords(keywords, limit=max_leads)
+        print(f"  🔗 LinkedIn profiles found: {len(linkedin_profiles)}")
 
-        prompt = f"""
-        {system_context}
-        
-        Analyze this Google OSINT snippet of a LinkedIn profile and qualify the lead.
-        
-        DATA:
-        {json.dumps(lead_data)}
-        
-        Task:
-        1. Extract their likely job title from the snippet.
-        2. Identify why they are a good target based on the data.
-        3. Write a 1-sentence opening line for an email to them using your SDR Context rules.
+        qualified_leads: List[LeadProfile] = []
 
-        Return ONLY a JSON object matching this schema:
-        {{
-            "full_name": "{lead_data['full_name']}",
-            "linkedin_url": "{lead_data['linkedin_url']}",
-            "current_headline": "string (inferred title)",
-            "key_insights": [
-                {{
-                    "trigger_type": "string",
-                    "evidence": "string",
-                    "relevance_score": 10
-                }}
-            ],
-            "suggested_opening_line": "string"
-        }}
-        """
+        # Step 3: Qualify each LinkedIn profile with Claude
+        for profile in linkedin_profiles:
+            time.sleep(0.5)
+            lead = self.brain.score_and_qualify(profile, raw_signals, sdr_context)
+            if lead:
+                qualified_leads.append(lead)
 
+        # Step 4: Synthesize leads from top Reddit buying-intent signals (max 2)
+        reddit_buying_signals = [
+            s for s in raw_signals
+            if s.platform == "reddit" and s.signal_type == "buying_intent"
+        ]
+        for signal in reddit_buying_signals[:2]:
+            if len(qualified_leads) >= max_leads:
+                break
+            time.sleep(0.5)
+            reddit_lead = self.brain.synthesize_reddit_lead(signal, sdr_context)
+            if reddit_lead:
+                qualified_leads.append(reddit_lead)
+
+        # Sort by aggregate intent score descending
+        qualified_leads.sort(key=lambda x: x.aggregate_intent_score, reverse=True)
+
+        return qualified_leads
+
+    # ── Backward-compat Methods (used by old /api/research route) ──
+
+    def discover_leads(self, keywords: str, limit: int = 3) -> List[dict]:
+        """Backward compat: Google dorking only, returns raw dicts."""
+        return self.resolver.find_profiles_for_keywords(keywords, limit=limit)
+
+    def analyze_profile(self, lead_data: dict, sdr_context: Optional[dict] = None) -> Optional[LeadProfile]:
+        """Backward compat: qualify a single profile with minimal signals."""
+        signals = []
         try:
-            print(f"🧠 Qualifying: {lead_data['full_name']}...")
-            # response = self.anthropic.messages.create(
-            #     model="claude-sonnet-4-6", 
-            #     max_tokens=800,
-            #     temperature=0.2, # Added slightly more temperature for line creativity
-            #     messages=[{"role": "user", "content": prompt}],
-            # )
-            
-            # content = response.content[0].text
-            # json_match = re.search(r'\{.*\}', content, re.DOTALL)
-            # raw_json = json.loads(json_match.group(0)) if json_match else json.loads(content)
-                
-            # return ScoutOutput(**raw_json)
+            # Try to get at least some news/reddit signals
+            keyword_str = lead_data.get("headline", "") or lead_data.get("full_name", "")
+            if keyword_str:
+                signals = self.harvester.harvest(keyword_str, platforms=["news", "reddit"])
+        except Exception:
+            pass
 
-            # --- GROQ (LLAMA 3) IMPLEMENTATION [ACTIVE] ---
-            response = self.client.chat.completions.create(
-                model="llama-3.1-8b-instant", 
-                messages=[
-                    {"role": "system", "content": system_context},
-                    {"role": "user", "content": prompt}
-                ],
-                temperature=0.2,
-                response_format={"type": "json_object"} 
-            )
-            content = response.choices[0].message.content
-            raw_json = json.loads(content)
+        if not sdr_context:
+            sdr_context = {
+                "company_name": "Unknown Company",
+                "value_proposition": "Our solution helps solve your business challenges.",
+                "target_audience": "Business professionals",
+                "tone_of_voice": "Professional and direct",
+            }
 
-            return ScoutOutput(**raw_json)
-            
-        except Exception as e:
-            print(f"⚠️ AI Analysis Failed for {lead_data['full_name']}: {str(e)}")
-            # Skip broken leads gracefully
-            return None
+        return self.brain.score_and_qualify(lead_data, signals, sdr_context)
+
+    def research_url(self, linkedin_url: str, sdr_context: Optional[dict] = None) -> Optional[LeadProfile]:
+        """Backward compat: enrich a single LinkedIn URL."""
+        # Parse name from URL slug
+        slug = linkedin_url.rstrip("/").split("/")[-1]
+        name = slug.replace("-", " ").title()
+
+        lead_data = {
+            "full_name": name,
+            "linkedin_url": linkedin_url,
+            "headline": f"Professional at LinkedIn — {slug}",
+        }
+        return self.analyze_profile(lead_data, sdr_context)
