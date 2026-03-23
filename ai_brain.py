@@ -85,14 +85,13 @@ class AIBrain:
             api_key = os.getenv(env_key_name)
 
             if not api_key:
-                raise EnvironmentError(
-                    f"{env_key_name} is missing from .env\n"
+                print(
+                    f"  ⚠️  {env_key_name} is missing from .env\n"
                     f"  Current provider: MODEL_PROVIDER={self.provider}\n"
-                    f"  Get a free key:\n"
-                    f"    Gemini:    https://aistudio.google.com/app/apikey\n"
-                    f"    Groq:      https://console.groq.com\n"
-                    f"    Anthropic: https://console.anthropic.com"
+                    f"  Features requiring AI will fail until this key is set."
                 )
+                self.client = None
+                return
         else:
             api_key = None # Not used for Ollama
 
@@ -134,6 +133,10 @@ class AIBrain:
         Handles the different API shapes of each provider.
         Always returns raw string content.
         """
+        if not self.client:
+            raise EnvironmentError(
+                f"AI Client ({self.provider}) not initialized. Check your {PROVIDER_ENV_KEYS.get(self.provider, 'API_KEY')}."
+            )
 
         if self.provider == "gemini":
             # Gemini takes a single string — combine system + user

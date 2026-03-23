@@ -516,15 +516,15 @@ class SignalHarvester:
         ln_key = os.getenv("LISTENNOTES_API_KEY")
 
         if not serper_key:
-            raise EnvironmentError(
-                "SERPER_API_KEY missing from .env — "
-                "YouTube search and News will not work"
+            print(
+                "⚠️  SERPER_API_KEY missing from .env — "
+                "YouTube search and News will be disabled."
             )
 
-        self.youtube = YouTubeCollector(serper_key=serper_key)
+        self.youtube = YouTubeCollector(serper_key=serper_key or "")
         self.podcast = PodcastCollector(listennotes_key=ln_key)
         self.reddit = RedditCollector()
-        self.news = NewsCollector(serper_key=serper_key)
+        self.news = NewsCollector(serper_key=serper_key or "")
 
     def harvest(
         self,

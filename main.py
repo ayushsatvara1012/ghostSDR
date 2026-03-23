@@ -17,24 +17,29 @@ def check_env():
     checks = {
         "ANTHROPIC_API_KEY": os.getenv("ANTHROPIC_API_KEY"),
         "SERPER_API_KEY":    os.getenv("SERPER_API_KEY"),
+        "GEMINI_API_KEY":    os.getenv("GEMINI_API_KEY"),
         "SUPABASE_URL":      os.getenv("SUPABASE_URL"),
         "SUPABASE_KEY":      os.getenv("SUPABASE_KEY"),
     }
+    missing = []
     for name, value in checks.items():
         if value:
             print(f"✅ {name} connected.")
         else:
-            print(f"❌ {name} missing — app will not function correctly!")
-
+            print(f"❌ {name} missing — feature will be disabled!")
+            missing.append(name)
+    
     # Optional key — just warn
     listennotes = os.getenv("LISTENNOTES_API_KEY")
     if listennotes:
         print("✅ LISTENNOTES_API_KEY connected (podcast signals enabled).")
     else:
-        print("⚠️  LISTENNOTES_API_KEY not set — podcast signals will be skipped.")
+        print("⚠️  LISTENNOTES_API_KEY missing (podcast signals disabled).")
+    
+    return missing
 
 
-check_env()
+missing_keys = check_env()
 
 # ──────────────────────────────────────────────────────────────────
 # APP SETUP
@@ -53,9 +58,15 @@ app.add_middleware(
 # Supabase client (service_role key — bypasses RLS for backend writes)
 supabase_url = os.getenv("SUPABASE_URL")
 supabase_key = os.getenv("SUPABASE_KEY")
-supabase: Client = create_client(supabase_url, supabase_key)
 
-# ScoutAgent singleton (initialises collectors + Anthropic client)
+if supabase_url and supabase_key:
+    supabase: Client = create_client(supabase_url, supabase_key)
+else:
+    print("⚠️  Supabase not initialized due to missing credentials.")
+    supabase = None
+
+# ScoutAgent singleton (initialises collectors + AI client)
+# This will now initialize even if some keys are missing
 scout = ScoutAgent()
 
 
@@ -82,10 +93,14 @@ class ResearchRequest(BaseModel):
 @app.get("/")
 async def root():
     return {
-        "status": "Ghost SDR API v3.0",
+        "status": "Ghost SDR API v3.1",
+        "healthy": True if not missing_keys else False,
+        "missing_keys": missing_keys,
         "platforms": ["youtube", "reddit", "news", "podcast"],
         "provider": scout.brain.provider,
         "model": scout.brain.model,
+        "ai_initialized": scout.brain.client is not None,
+        "database_connected": supabase is not None,
     }
 
 
@@ -100,6 +115,9 @@ async def run_hunt(request: HuntRequest):
         print(f"\n🚀 [Hunt] User: {request.user_id} | Keywords: {request.keywords}")
 
         # ── STEP 1: Credit Check ────────────────────────────────────
+        if not supabase:
+            raise ValueError("Database not connected. Check SUPABASE_URL and SUPABASE_KEY.")
+
         user_res = supabase.table("users").select("api_credits").eq("id", request.user_id).execute()
         if not user_res.data:
             raise ValueError("User profile not found. Are you authenticated?")
@@ -207,3 +225,10 @@ async def run_research(request: ResearchRequest):
     except Exception as e:
         print(f"❌ Research Error: {e}")
         raise HTTPException(status_code=500, detail="Internal server error during URL enrichment.")
+
+
+if __name__ == "__main__":
+    import uvicorn
+    # Use PORT from environment (Render requirement) or default to 10000
+    port = int(os.getenv("PORT", 10000))
+    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=True)
