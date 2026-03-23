@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { Inter, Barlow_Condensed, JetBrains_Mono } from 'next/font/google';
 import { ThemeProvider } from '@/components/ThemeProvider';
-import Script from 'next/script'; // 1. Import the Next.js Script component
+import Script from "next/script"; // 1. Import the Next.js Script component
 import './globals.css';
 
 const inter = Inter({
@@ -53,9 +53,9 @@ export default function RootLayout({
         </ThemeProvider>
 
         <Script
-          src="http://ghost-sdr.vercel.app/widget.js"
+          src="https://www.sapybase.com/widget.js"
           strategy="lazyOnload"
-          data-api-key="sb_live_llWxw0Xrbphz5UQfZNyyQhkKmu7IpaUlHlu60F7n3g4"
+          data-api-key="sb_live_lZbhs0YUNRU0_dToKiDe2KUvVN83BG-uAVCL0_Pv8wE"
           data-api-url="https://sapyai.onrender.com"
         />
       </body>
